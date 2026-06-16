@@ -1,0 +1,22 @@
+{
+  "servers": [
+    {
+      "name": "github-analysis-server",
+      "command": "node",
+      "args": ["server.js"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "GITHUB_TOKEN": "${input:githubToken}",
+        "GITHUB_ORG": "rentacenter"
+      }
+    }
+  ],
+  "inputs": [
+    {
+      "id": "githubToken",
+      "type": "promptString",
+      "description": "GitHub Personal Access Token",
+      "password": true
+    }
+  ]
+}
