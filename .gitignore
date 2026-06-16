@@ -1,0 +1,11 @@
+node_modules/
+.env
+.DS_Store
+npm-debug.log*
+.vscode/mcp.json
+dist/
+coverage/
+*.log
+tmp/
+*.tgz
+package-lock.json
