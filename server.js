@@ -969,6 +969,58 @@ server.tool(
   }
 );
 
+// ─── Tool: Cleanup analysis files ─────────────────────────────────────────────
+//
+// Deletes temporary .cjs analysis/RCA files generated during investigations.
+// Call this once the RCA is finalized and agreed upon.
+// Only removes files matching the pattern *.cjs in the server's working directory.
+server.tool(
+  "cleanup_analysis_files",
+  {
+    confirm: z.literal(true).describe("Must be true to confirm deletion. Prevents accidental calls."),
+    directory: z.string().optional().describe("Absolute path to scan for .cjs files. Defaults to process.cwd()."),
+  },
+  async ({ confirm, directory }) => {
+    if (!confirm) {
+      return { content: [{ type: "text", text: "Aborted: confirm must be true." }], isError: true };
+    }
+
+    const targetDir = directory ?? process.cwd();
+    const deleted = [];
+    const errors  = [];
+
+    let entries;
+    try {
+      entries = readdirSync(targetDir, { withFileTypes: true });
+    } catch (err) {
+      return { content: [{ type: "text", text: `Cannot read directory: ${err.message}` }], isError: true };
+    }
+
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".cjs")) continue;
+      const fullPath = join(targetDir, entry.name);
+      try {
+        rmSync(fullPath, { force: true });
+        deleted.push(entry.name);
+      } catch (err) {
+        errors.push({ file: entry.name, error: err.message });
+      }
+    }
+
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({
+          directory: targetDir,
+          deleted,
+          errors,
+          summary: `${deleted.length} file(s) deleted, ${errors.length} error(s).`,
+        }, null, 2),
+      }],
+    };
+  }
+);
+
 // ─── Start ─────────────────────────────────────────────────────────────────────
 const transport = new StdioServerTransport();
 await server.connect(transport);
