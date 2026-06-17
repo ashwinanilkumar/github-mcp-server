@@ -42,7 +42,9 @@ To restart the server after changes: open Command Palette → **MCP: Restart Ser
 
 ## How to Use
 
-Open **GitHub Copilot Chat** (Ctrl+Shift+I) and just ask questions naturally. The AI will call the right tool automatically.
+Open **GitHub Copilot Chat** (Ctrl+Shift+I) and ask questions naturally, or use the built-in slash-command prompts and the dedicated **rac-rca** agent. See the [Copilot Integration](#copilot-integration) section for details on prompts and the agent.
+
+The AI will call the right tool automatically.
 
 ### Repo naming convention
 
@@ -263,6 +265,62 @@ multi_repo_search(
   prefix: "es"
 )
 ```
+
+---
+
+### 🧹 Maintenance Tools
+
+#### `cleanup_analysis_files`
+**Best for:** Removing temporary `.cjs` scratch files generated during RCA sessions.
+
+Scans a directory for `*.cjs` files and deletes them. Requires `confirm: true` to prevent accidental deletion. Call this once an RCA is finalized.
+
+**Example prompt:**
+- *"Clean up the analysis files from this RCA"*
+
+| Parameter | Description |
+|-----------|-------------|
+| `confirm` | Must be `true` — required safety gate |
+| `directory` | Path to scan. Defaults to the server's working directory |
+
+---
+
+## Copilot Integration
+
+This repo ships a complete set of VS Code Copilot customization files under `.github/`. Once you clone the repo and open it in VS Code, these are active automatically.
+
+### Workspace Instructions (auto-loaded)
+
+`.github/copilot-instructions.md` is loaded into every Copilot Chat session. It gives the AI:
+- RAC repo naming conventions (`racpad_`, `es_`, `ess_`, etc.)
+- Core terminology (TRTO, SAC, EPO, RAC Exchange, `cashPriceMultiplier`)
+- The 10-step RCA workflow
+- Tool selection guide (which MCP tool to use for which scenario)
+- Calculation formulas for SAC/EPO/TRTO
+- Behavioral rules (never assume, always fetch code, always show math)
+
+No action needed — it's automatic.
+
+### Slash-Command Prompts
+
+In Copilot Chat, type `/` to open the prompt picker.
+
+| Prompt | File | When to use |
+|--------|------|-------------|
+| `/rca` | `.github/prompts/rca.prompt.md` | Run a full incident RCA — paste incident ID + DB data |
+| `/functionality-check` | `.github/prompts/functionality-check.prompt.md` | "How does feature X work?" end-to-end |
+| `/sac-epo-check` | `.github/prompts/sac-epo-check.prompt.md` | Verify a SAC/EPO/TRTO calculation from DB values |
+| `/what-changed` | `.github/prompts/what-changed.prompt.md` | Find recent commits that may have caused a regression |
+
+### RCA Agent
+
+`.github/agents/rac-rca.agent.md` defines a custom **rac-rca** agent mode in Copilot Chat.
+
+Switch to **agent mode** in Copilot Chat and select **rac-rca** from the agent dropdown. This agent:
+- Has only the relevant MCP tools available (no broad file edits)
+- Strictly follows the 10-step RCA workflow
+- Always fetches actual code before forming a conclusion
+- Calls `cleanup_analysis_files` automatically when the RCA is agreed upon
 
 ---
 
