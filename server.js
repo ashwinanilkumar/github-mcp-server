@@ -5,10 +5,12 @@ import axios from "axios";
 import dotenv from "dotenv";
 import { execSync } from "child_process";
 import { mkdtempSync, rmSync, readdirSync, readFileSync, statSync } from "fs";
-import { join } from "path";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
 import { tmpdir } from "os";
 
-dotenv.config();
+// Resolve .env relative to this file so it works regardless of CWD
+dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), ".env") });
 
 if (!process.env.GITHUB_TOKEN) {
   console.error("❌ Missing GITHUB_TOKEN in .env");
