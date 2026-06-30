@@ -1,7 +1,7 @@
 {
   "servers": [
     {
-      "name": "github-analysis-server",
+      "name": "github-analys",
       "command": "node",
       "args": ["server.js"],
       "cwd": "${workspaceFolder}",

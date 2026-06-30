@@ -686,7 +686,7 @@ server.tool(
               const flag = m[1] || m[2];
               const ref = `${full.replace(tmpDir, "").replace(/\\/g, "/")}:${i + 1}`;
               if (!flagSet.has(flag)) flagSet.set(flag, []);
-              flagSet.get().push(ref);
+              flagSet.get(flag).push(ref);
             }
           });
         }
@@ -762,7 +762,7 @@ server.tool(
               if (m?.[1]) {
                 const msg = m[1].trim();
                 if (!messages.has(msg)) messages.set(msg, new Set());
-                messages.get().add(relPath);
+                messages.get(msg).add(relPath);
               }
             }
           });
@@ -936,8 +936,8 @@ server.tool(
               if (m?.[1] && m[1].length > 3) {
                 const key = m[1];
                 if (!apiCalls.has(key)) apiCalls.set(key, { type: name, files: [] });
-                if (!apiCalls.get().files.includes(relPath)) {
-                  apiCalls.get().files.push(relPath);
+                if (!apiCalls.get(key).files.includes(relPath)) {
+                  apiCalls.get(key).files.push(relPath);
                 }
               }
             }

@@ -1,0 +1,449 @@
+{
+  "_readme": "Compact column index for fast lookups. Use this BEFORE reading CSVs. Format: schema -> table -> { cols: [col:type,...], pk: 'primary_key_col', note: 'optional hint' }. Audit cols (created_by, created_date, last_modified_by, last_modified_date) are standard on most tables and omitted here for brevity — assume they exist unless noted.",
+  "_audit_cols": ["created_by:varchar", "created_date:timestamptz", "last_modified_by:varchar", "last_modified_date:timestamptz"],
+  "configadm": {
+    "param_config": {
+      "pk": "param_config_id",
+      "cols": ["param_config_id:bigint","association_id:bigint","parent_association_id:bigint","param_key_id:bigint","start_date:date","end_date:date","line_of_business:varchar"],
+      "note": "Core application configuration table. Filter by param_key for rule, association for scope."
+    },
+    "param_config_list_of_value": {
+      "pk": "param_config_list_of_value_id",
+      "cols": ["param_config_list_of_value_id:bigint","param_config_id:bigint","param_value:varchar","param_name:varchar","param_desc:varchar","param_order:smallint","active:smallint","param_lov_param_name:varchar"]
+    },
+    "param_key": {
+      "pk": "param_key_id",
+      "cols": ["param_key_id:bigint","param_key_name:varchar","param_key_desc:varchar","display_name:varchar","param_group_id:bigint","param_key_type_id:bigint","param_key_datatype_id:bigint","param_value_multiplier_id:bigint","param_lov_param_name:varchar"],
+      "note": "param_key_name is the rule name e.g. 'SameAsCashDays', 'NUM_SAC_DAYS_PRINTED'."
+    },
+    "param_group": {
+      "pk": "param_group_id",
+      "cols": ["param_group_id:bigint","param_group_name:varchar","param_group_desc:varchar","display_name:varchar","param_category_id:bigint"]
+    },
+    "param_category": {
+      "pk": "param_category_id",
+      "cols": ["param_category_id:bigint","param_category_name:varchar","param_category_desc:varchar","display_name:varchar","param_category_master_id:bigint"]
+    },
+    "param_category_master": {
+      "pk": "param_category_master_id",
+      "cols": ["param_category_master_id:bigint","param_category_master_name:varchar","param_category_master_desc:varchar","display_name:varchar","display_seq:int","active:smallint"]
+    },
+    "param_name": {
+      "pk": "param_name_id",
+      "cols": ["param_name_id:bigint","param_name_value:varchar","param_name_desc:varchar","display_name:varchar","param_key_id:bigint"]
+    },
+    "param_value_template": {
+      "pk": "param_value_template_id",
+      "cols": ["param_value_template_id:bigint","param_value_template_name:varchar","param_value_template_desc:varchar","param_key_id:bigint"]
+    },
+    "association": {
+      "pk": "association_id",
+      "cols": ["association_id:bigint","association_name:varchar","association_desc:varchar","association_ref_code:varchar","association_type_id:bigint"],
+      "note": "association_ref_code = country/store/state code e.g. 'US'. Join association_type to filter by scope level."
+    },
+    "association_type": {
+      "pk": "association_type_id",
+      "cols": ["association_type_id:bigint","association_type_name:varchar","association_type_desc:varchar","display_value:varchar","display_seq:int"],
+      "note": "association_type_name values: 'COUNTRY', 'STORE', 'STATE', etc."
+    },
+    "rms_item_config": {
+      "pk": "rms_item_config_id",
+      "cols": ["rms_item_config_id:bigint","param_key_id:bigint","param_value:varchar","association_id:bigint","parent_association_id:bigint","department:varchar","sub_department:varchar","bracket:varchar","rms_item_number:bigint","start_date:date","end_date:date","store_type_id:bigint"]
+    },
+    "ent_business_rule": {
+      "pk": "ent_business_rule_id",
+      "cols": ["ent_business_rule_id:bigint","param_category_name:varchar","param_group_name:varchar","param_config_assoc_type:varchar","param_config_assoc_ref_code:varchar","param_key_name:varchar","param_value:varchar","line_of_business:varchar","processed:varchar","parent_association_type:varchar","parent_association_ref_code:varchar","param_lov_param_name:varchar","param_lov_param_order:smallint"],
+      "note": "Flattened view-like table for enterprise business rules. Useful for quick lookups without joins."
+    },
+    "app": {
+      "pk": "app_id",
+      "cols": ["app_id:bigint","app_name:varchar","display_value:varchar","display_seq:int","app_name_es:varchar","display_value_es:varchar"]
+    },
+    "app_component": {
+      "pk": "app_component_id",
+      "cols": ["app_component_id:bigint","app_component_name:varchar","app_id:bigint","display_value:varchar","display_seq:int","app_component_name_es:varchar"]
+    },
+    "app_sub_component": {
+      "pk": "app_sub_component_id",
+      "cols": ["app_sub_component_id:bigint","app_sub_component_name:varchar","active:smallint","app_component_id:bigint","app_sub_component_name_es:varchar"]
+    },
+    "app_component_function": {
+      "pk": "app_component_function_id",
+      "cols": ["app_component_function_id:bigint","app_sub_component_id:bigint","app_function_name:varchar","active:smallint","app_function_name_es:varchar"]
+    },
+    "app_role": {
+      "pk": "app_role_id",
+      "cols": ["app_role_id:bigint","parent_app_role_id:bigint","app_role_name:varchar","app_role_code:varchar","start_date:date","end_date:date","min_override_pct:numeric","max_override_pct:numeric","max_payment_amount:numeric","accounting_unit_type:varchar","ent_role_id:bigint"]
+    },
+    "app_role_menu": {
+      "pk": "app_role_menu_id",
+      "cols": ["app_role_menu_id:bigint","app_component_function_id:bigint","app_role_id:bigint","app_user_id:bigint","view:smallint","edit:smallint","approve:smallint","active:smallint"]
+    },
+    "app_role_permission": {
+      "pk": "app_role_permission_id",
+      "cols": ["app_role_permission_id:bigint","app_component_id:bigint","app_role_id:bigint","view:smallint","edit:smallint","approve:smallint"]
+    },
+    "app_user": {
+      "pk": "app_user_id",
+      "cols": ["app_user_id:bigint","app_user_first_name:varchar","app_user_last_name:varchar","active:smallint","ldap_user_id:varchar","email_address:varchar","employee_id:bigint","ent_user_id:bigint"]
+    },
+    "app_user_role": {
+      "pk": "app_user_role_id",
+      "cols": ["app_user_role_id:bigint","app_user_id:bigint","app_role_id:bigint","start_date:timestamp","end_date:date","temporary_store_id:bigint","app_user_role_assign_type_id:smallint"]
+    },
+    "app_user_location": {
+      "pk": "app_user_location_id",
+      "cols": ["app_user_location_id:bigint","app_user_id:bigint","org_hierarchy_id:bigint","app_user_locat_assign_type_id:bigint","start_date:timestamp","end_date:date","user_location_assignment_id:bigint"]
+    },
+    "org_hierarchy": {
+      "pk": "org_hierarchy_id",
+      "cols": ["org_hierarchy_id:bigint","accounting_unit_level:varchar","accounting_unit_number:varchar","accounting_unit_owner_name:varchar","accounting_unit_type:varchar","accounting_unit_name:varchar","effective_start_date:date","effective_end_date:date"]
+    },
+    "org_hierarchy_detail": {
+      "pk": "org_hierarchy_detail_id",
+      "cols": ["org_hierarchy_detail_id:bigint","org_hierarchy_id:bigint","parent_org_hierarchy_id:bigint","effective_start_date:date","effective_end_date:date"]
+    },
+    "org_attribute": {
+      "pk": "org_attribute_id",
+      "cols": ["org_attribute_id:bigint","org_hierarchy_id:bigint","country_id:bigint","state_province_id:bigint","address_line_1:varchar","address_line_2:varchar","city:varchar","post_code:varchar","phone_number:varchar","email_id:varchar","fax_number:varchar"]
+    },
+    "country": {
+      "pk": "country_id",
+      "cols": ["country_id:bigint","country_name:varchar","abbreviation:varchar"]
+    },
+    "state_province": {
+      "pk": "state_province_id",
+      "cols": ["state_province_id:bigint","country_id:bigint","tax_template_id:bigint"]
+    },
+    "store": {
+      "pk": "store_id",
+      "cols": ["store_id:bigint","state_province_id:bigint","language_id:bigint","timezone_id:bigint","store_type_id:bigint","store_sub_type_id:bigint","ent_store_id:bigint","epay_terminal_id:bigint"]
+    },
+    "company": {
+      "pk": "company_id",
+      "cols": ["company_id:bigint","line_of_business_id:bigint"]
+    },
+    "message_config": {
+      "pk": "message_config_id",
+      "cols": ["message_config_id:bigint","association_id:bigint","company_id:bigint","message_template_id:bigint"]
+    }
+  },
+  "racadm": {
+    "agreement": {
+      "pk": "agreement_id",
+      "cols": ["agreement_id:bigint","agreement_number:varchar","store_id:bigint","customer_id:bigint","agreement_type_id:bigint","agreement_status_type_id:bigint","agreement_status_reason_id:bigint","parent_agreement_id:bigint","sac_date:date","sac_price:numeric","payment_schedule_id:bigint","state_province_id:bigint","delivery_address_id:bigint","agreement_source_id:bigint","sales_person_id:bigint","customer_payment_method_id:bigint","ent_agreement_id:bigint","rate_reduction_reason_id:bigint"],
+      "note": "PK=agreement_id. Business key=agreement_number. Contains sac_date:date and sac_price:numeric."
+    },
+    "agreement_customer": {
+      "pk": "agreement_customer_id",
+      "cols": ["agreement_customer_id:bigint","agreement_id:bigint","customer_id:bigint","signature_type_id:bigint","ent_agreement_party_id:bigint"]
+    },
+    "agreement_inventory": {
+      "pk": "agreement_inventory_id",
+      "cols": ["agreement_inventory_id:bigint","agreement_id:bigint","inventory_id:bigint","inventory_price_id:bigint","parent_agreement_inventory_id:bigint","ent_agreement_inventory_id:bigint","reorder_rms_item_master_id:bigint","reorder_reason_id:bigint"]
+    },
+    "agreement_payment_history": {
+      "pk": "agreement_payment_history_id",
+      "cols": ["agreement_payment_history_id:bigint","agreement_id:bigint","receipt_id:bigint","store_id:bigint","reversed_agr_payment_hist_id:bigint","ent_agr_payment_hist_id:bigint","previous_schedule_id:bigint"],
+      "note": "All payment transactions. Join receipt for amount/date details."
+    },
+    "agreement_status": {
+      "pk": "agreement_status_id",
+      "cols": ["agreement_status_id:bigint","agreement_id:bigint","agreement_status_type_id:bigint","agreement_status_reason_id:bigint","ent_agreement_status_stg_id:bigint"]
+    },
+    "agreement_status_type": {
+      "pk": "agreement_status_type_id",
+      "cols": ["agreement_status_type_id:bigint","ref_code:varchar","desc_en:varchar","desc_es:varchar","active:smallint","default_val:smallint","display_seq:int","agreement_status_group_id:bigint"],
+      "note": "ref_code values: ACTIVE, CLOSED, EARLY_PURCHASE, CHARGED_OFF, SKIP, etc."
+    },
+    "agreement_status_reason": {
+      "pk": "agreement_status_reason_id",
+      "cols": ["agreement_status_reason_id:bigint","agreement_status_type_id:bigint","ref_code:varchar","desc_en:varchar","desc_es:varchar","active:smallint"]
+    },
+    "agreement_status_group": {
+      "pk": "agreement_status_group_id",
+      "cols": ["agreement_status_group_id:bigint","ref_code:varchar","desc_en:varchar"]
+    },
+    "agreement_type": {
+      "pk": "agreement_type_id",
+      "cols": ["agreement_type_id:bigint","ref_code:varchar","desc_en:varchar","desc_es:varchar","active:smallint"]
+    },
+    "agreement_activity_log": {
+      "pk": "agreement_activity_log_id",
+      "cols": ["agreement_activity_log_id:bigint","agreement_id:bigint","agreement_activity_type_id:bigint","ent_agreement_activity_log_id:bigint"]
+    },
+    "agreement_activity_type": {
+      "pk": "agreement_activity_type_id",
+      "cols": ["agreement_activity_type_id:bigint","ref_code:varchar","desc_en:varchar","active:smallint"]
+    },
+    "agreement_param": {
+      "pk": "agreement_param_id",
+      "cols": ["agreement_param_id:bigint","agreement_id:bigint","param_name:varchar","param_value:varchar","param_key_id:bigint","param_group_name:varchar","ent_agr_bus_rule_param_id:bigint"],
+      "note": "Agreement-level parameter overrides. param_key_id references configadm.param_key."
+    },
+    "agreement_fee": {
+      "pk": "agreement_fee_id",
+      "cols": ["agreement_fee_id:bigint","agreement_id:bigint","agreement_fee_type_id:bigint","ent_agreement_fee_id:bigint"]
+    },
+    "agreement_fee_type": {
+      "pk": "agreement_fee_type_id",
+      "cols": ["agreement_fee_type_id:bigint","ref_code:varchar","desc_en:varchar","active:smallint"]
+    },
+    "agreement_coverage": {
+      "pk": "agreement_coverage_id",
+      "cols": ["agreement_coverage_id:bigint","agreement_id:bigint","coverage_type_id:bigint","ent_agreement_coverage_id:bigint"]
+    },
+    "agreement_promotion": {
+      "pk": "agreement_promotion_id",
+      "cols": ["agreement_promotion_id:bigint","agreement_id:bigint","promotion_id:bigint","agreement_promotion_status_id:bigint","ent_agreement_promotion_id:bigint"]
+    },
+    "agreement_promotion_rule": {
+      "pk": "agreement_promotion_rule_id",
+      "cols": ["agreement_promotion_rule_id:bigint","param_key:varchar","param_value:varchar","execution_type:varchar","minimum_value:varchar","maximum_value:varchar","param_key_name:varchar","contract_type_id:bigint","contract_id:bigint","discount_applied:varchar","ent_agreement_promotion_rule_id:bigint"]
+    },
+    "agreement_transfer": {
+      "pk": "agreement_transfer_id",
+      "cols": ["agreement_transfer_id:bigint","agreement_id:bigint","from_store_id:bigint","to_store_id:bigint","transfer_status_id:bigint","ent_agreement_transfer_id:bigint"]
+    },
+    "agreement_workflow": {
+      "pk": "agreement_workflow_id",
+      "cols": ["agreement_workflow_id:bigint","agreement_id:bigint","workflow_status_id:bigint","ent_agreement_workflow_id:bigint"]
+    },
+    "agreement_source": {
+      "pk": "agreement_source_id",
+      "cols": ["agreement_source_id:bigint","ref_code:varchar","desc_en:varchar","active:smallint"]
+    },
+    "agreement_rms_item": {
+      "pk": "agreement_rms_item_id",
+      "cols": ["agreement_rms_item_id:bigint","agreement_id:bigint","rms_item_master_id:bigint","price_model_id:bigint","ent_agreement_rms_item_id:bigint"]
+    },
+    "agreement_reorder": {
+      "pk": "agreement_reorder_id",
+      "cols": ["agreement_reorder_id:bigint","agreement_id:bigint","reorder_reason_id:bigint","ent_agreement_reorder_id:bigint"]
+    },
+    "agreement_snapshot": {
+      "pk": "agreement_id",
+      "cols": ["agreement_id:bigint"],
+      "note": "Point-in-time snapshot of agreement. Same structure as agreement table."
+    },
+    "account_management_activity": {
+      "pk": "account_management_activity_id",
+      "cols": ["account_management_activity_id:bigint","store_id:bigint","customer_id:bigint","activity_date:timestamptz","account_activity_type_id:bigint","account_activity_subtype_id:bigint","notes:varchar","call_time:timestamp","call_result_id:bigint","commitment_id:bigint","receipt_id:bigint","phone_number_dialed:varchar","days_past_due_payment:numeric","agreement_id:bigint","field_visit_result_id:smallint","tlo_email_id:bigint","tlo_address_id:bigint","ent_acct_mgmt_activity_id:bigint"]
+    },
+    "account_activity_type": {
+      "pk": "account_activity_type_id",
+      "cols": ["account_activity_type_id:bigint","ref_code:varchar","desc_en:varchar","desc_es:varchar","active:smallint","display_seq:int"]
+    },
+    "account_activity_subtype": {
+      "pk": "account_activity_subtype_id",
+      "cols": ["account_activity_subtype_id:bigint","ref_code:varchar","desc_en:varchar","desc_es:varchar","active:smallint"]
+    },
+    "customer": {
+      "pk": "customer_id",
+      "cols": ["customer_id:bigint","first_name:varchar","last_name:varchar","email_address:varchar","okta_id:varchar","date_of_birth:date","ssn_encrypted:varchar","ent_party_id:bigint"],
+      "note": "PK=customer_id. Search by email_address or okta_id."
+    },
+    "address": {
+      "pk": "address_id",
+      "cols": ["address_id:bigint","customer_id:bigint","address_type_id:bigint","address_line_1:varchar","address_line_2:varchar","city:varchar","postal_code:varchar","state_province_id:bigint","country_id:bigint","ent_address_id:bigint"]
+    },
+    "address_type": {
+      "pk": "address_type_id",
+      "cols": ["address_type_id:bigint","ref_code:varchar","desc_en:varchar","active:smallint"]
+    },
+    "inventory": {
+      "pk": "inventory_id",
+      "cols": ["inventory_id:bigint","store_id:bigint","rms_item_master_id:bigint"]
+    },
+    "inventory_price": {
+      "pk": "item_price_id",
+      "cols": ["item_price_id:bigint","inventory_id:bigint","sac_days:int","sac_days_printed:int","cash_price_inote:numeric","epo_pct:numeric","start_time:timestamp","end_time:timestamp","price_tag_type:varchar"],
+      "note": "Contains sac_days and sac_days_printed (both integer)."
+    },
+    "override_activity": {
+      "pk": "override_activity_id",
+      "cols": ["override_activity_id:bigint","store_id:bigint","sac_days:int","sac_days_printed:int"],
+      "note": "Contains sac_days and sac_days_printed (both integer)."
+    },
+    "receipt": {
+      "pk": "receipt_id",
+      "cols": ["receipt_id:bigint","store_id:bigint","customer_id:bigint","receipt_date:timestamptz","total_amount:numeric","receipt_type_id:bigint","ent_receipt_id:bigint"]
+    },
+    "store": {
+      "pk": "store_id",
+      "cols": ["store_id:bigint","store_number:varchar","store_name:varchar","state_province_id:bigint"],
+      "note": "Business key=store_number. Cross-schema mirror: configadm.store."
+    },
+    "country": {
+      "pk": "country_id",
+      "cols": ["country_id:bigint","country_name:varchar"],
+      "note": "Separate from configadm.country."
+    },
+    "country_code": {
+      "pk": "country_code_id",
+      "cols": ["country_code_id:smallint","country_code_value:varchar","desc_en:varchar","desc_es:varchar","active:smallint","country_id:bigint"]
+    },
+    "web_lead_payment": {
+      "pk": "web_lead_payment_id",
+      "cols": ["web_lead_payment_id:bigint","order_number:varchar","first_name:varchar","last_name:varchar"],
+      "note": "Web lead payments. Search by order_number."
+    },
+    "rms_item_exception": {
+      "pk": "rms_item_exception_id",
+      "cols": ["rms_item_exception_id:bigint","sac_days:int"],
+      "note": "SAC day exceptions per RMS item."
+    },
+    "accrued_collection_percent": {
+      "pk": "accrued_collection_pct_id",
+      "cols": ["accrued_collection_pct_id:bigint","country_id:smallint"]
+    }
+  },
+  "prcadm": {
+    "_note": "Pricing administration schema. Manages product pricing rules, zones, queues, and pricing uploads.",
+    "brand": {
+      "pk": "brand_id",
+      "cols": ["brand_id:bigint","brand_name:varchar","active:smallint","rms_brand_code:varchar"]
+    },
+    "category_type": {
+      "pk": "category_type_id",
+      "cols": ["category_type_id:smallint","category_type_name:varchar","ref_code:varchar","desc_en:varchar","desc_es:varchar","active:smallint","display_seq:int"]
+    },
+    "category_subtype": {
+      "pk": "category_subtype_id",
+      "cols": ["category_subtype_id:smallint","category_subtype_name:varchar","category_type_id:smallint","ref_code:varchar","desc_en:varchar","desc_es:varchar","active:smallint","display_seq:int"]
+    },
+    "company": {
+      "pk": "company_id",
+      "cols": ["company_id:bigint","company_code:varchar","company_name:varchar","start_date:date","end_date:date","line_of_business_id:bigint","franchisee_indicator:smallint","corporate_accounting_unit:varchar","internal_company_number:varchar","email_address:varchar","certificate_number:varchar"]
+    },
+    "company_store": {
+      "pk": "company_store_id",
+      "cols": ["company_store_id:bigint","company_id:bigint","store_id:bigint","start_date:date","end_date:date","accounting_unit:varchar"]
+    },
+    "cost_pricing_rule": {
+      "pk": "cost_pricing_rule_id",
+      "cols": ["cost_pricing_rule_id:bigint","zone_id:bigint","rms_department_id:bigint","rms_subdepartment_id:bigint","rms_bracket_id:bigint","min_rate_pct:numeric","max_rate_pct:numeric","min_rate_new:numeric","max_rate_new:numeric","min_rate_used:numeric","max_rate_used:numeric","turn:numeric","max_term:smallint","start_date:date","end_date:date","pricing_queue_id:bigint","pricing_upload_id:bigint"],
+      "note": "Defines cost-based pricing bounds (min/max rates) by zone/department/subdepartment/bracket."
+    },
+    "cost_zone": {
+      "pk": "cost_zone_id",
+      "cols": ["cost_zone_id:bigint","cost_zone_number:int","description:varchar"]
+    },
+    "country": {
+      "pk": "country_id",
+      "cols": ["country_id:bigint","country_name:varchar","abbreviation:varchar"]
+    },
+    "equation_type": {
+      "pk": "equation_type_id",
+      "cols": ["equation_type_id:smallint","equation_type_name:varchar","equation:varchar","ref_code:varchar","desc_en:varchar","desc_es:varchar","active:smallint","display_seq:int"]
+    },
+    "equation_type_param": {
+      "pk": "equation_type_param_id",
+      "cols": ["equation_type_param_id:smallint","param_name:varchar","equation_type_id:smallint","ref_code:varchar","desc_en:varchar","desc_es:varchar","active:smallint","display_seq:int"]
+    },
+    "item_price": {
+      "pk": "item_price_id",
+      "cols": ["item_price_id:bigint","pricing_type:varchar","promotion_name:varchar","rms_item_master_id:bigint","start_time:timestamp","end_time:timestamp","weekly_rate_new:numeric","term:smallint","cash_price_multiplier:numeric","forced_cash_price:numeric","weekly_rate_used:numeric","turn:numeric","weekly_rate_add_on:numeric","price_hierarchy_id:bigint","hierarchy_id:bigint","price_hierarchy_value:varchar","purchase_source:varchar","pricing_queue_id:bigint","pricing_upload_id:bigint"],
+      "note": "Item-level price overrides by pricing type (e.g., STANDARD, PROMOTION)."
+    },
+    "item_price_hierarchy": {
+      "pk": "item_price_hierarchy_id",
+      "cols": ["item_price_hierarchy_id:bigint","start_date:date","end_date:date","zone_id:bigint","rms_item_master_id:bigint","rms_bracket_id:bigint","rms_subdepartment_id:bigint","rms_department_id:bigint"]
+    },
+    "item_subtype": {
+      "pk": "item_subtype_id",
+      "cols": ["item_subtype_id:bigint","subtype_code:varchar","item_type_id:bigint","desc_en:varchar","desc_es:varchar","rent:int","epo:int"]
+    },
+    "item_type": {
+      "pk": "item_type_id",
+      "cols": ["item_type_id:bigint","item_type_code:varchar","active:smallint","desc_en:varchar","desc_es:varchar"]
+    },
+    "line_of_business": {
+      "pk": "line_of_business_id",
+      "cols": ["line_of_business_id:bigint","ref_code:varchar","display_seq:int","desc_en:varchar","desc_es:varchar"]
+    },
+    "manufacturer_model_master": {
+      "pk": "manufacturer_model_master_id",
+      "cols": ["manufacturer_model_master_id:bigint","rms_item_master_id:bigint","brand_id:bigint","active:smallint","discontinued:smallint","manufacturer_desc:varchar","manufacturer_price:numeric","manufacturer_model_number:varchar","ship_freight_value:numeric"]
+    },
+    "package_price": {
+      "pk": "package_price_id",
+      "cols": ["package_price_id:bigint","package_name:varchar","action_type:varchar","pct_discount_on_rate:numeric","dollar_discount_on_rate:numeric","start_date:date","end_date:date","zone_id:bigint"]
+    },
+    "package_item": {
+      "pk": "package_item_id",
+      "cols": ["package_item_id:bigint","package_price_id:bigint","rms_department_id:bigint","rms_subdepartment_id:bigint","rms_bracket_id:bigint","rms_item_master_id:bigint","min_quantity:int","max_quantity:int"]
+    },
+    "price_hierarchy": {
+      "pk": "price_hierarchy_id",
+      "cols": ["price_hierarchy_id:bigint","price_hierarchy_level:varchar","price_hierarchy_type:varchar"]
+    },
+    "pricing_param_group": {
+      "pk": "pricing_param_group_id",
+      "cols": ["pricing_param_group_id:bigint","pricing_param_group_name:varchar","ref_code:varchar","display_seq:int","default_value:smallint","desc_en:varchar","desc_es:varchar","active:smallint"]
+    },
+    "pricing_param_key": {
+      "pk": "pricing_param_key_id",
+      "cols": ["pricing_param_key_id:bigint","pricing_param_key_name:varchar","pricing_param_group_id:bigint","ref_code:varchar","display_seq:int","default_value:smallint","desc_en:varchar","desc_es:varchar","active:smallint"],
+      "note": "Pricing rule parameter keys. pricing_param_key_name is the rule identifier."
+    },
+    "pricing_param_value": {
+      "pk": "pricing_param_value_id",
+      "cols": ["pricing_param_value_id:bigint","pricing_param_key_id:bigint","item_price_hierarchy_id:bigint","pricing_queue_id:bigint","pricing_upload_id:bigint","pricing_type:varchar","param_value:varchar","start_time:timestamp","end_time:timestamp"],
+      "note": "Configured values for pricing parameters. Join pricing_param_key for the rule name."
+    },
+    "pricing_queue": {
+      "pk": "pricing_queue_id",
+      "cols": ["pricing_queue_id:bigint","schedule_type_id:smallint","queue_type_id:smallint","submitted_by:varchar","submitted_datetime:timestamptz","approved_by:varchar","comments:varchar","company_code:varchar","queue_status_type_id:smallint","fail_count:bigint","success_count:bigint","document_url:varchar","publish_price_flag:smallint"],
+      "note": "Pricing change queue. Join queue_status_type for status description."
+    },
+    "pricing_queue_stage": {
+      "pk": "pricing_queue_stage_id",
+      "cols": ["pricing_queue_stage_id:bigint","pricing_queue_id:bigint","pricing_type:varchar","weekly_rate_new:numeric","weekly_rate_used:numeric","weekly_rate_add_on:numeric","term:smallint","cash_price_multiplier:numeric","forced_cash_price:numeric","turn:numeric","store_id:bigint","package_name:varchar","action_type:varchar","sac_days:int","sac_days_printed:int","epo_pct:numeric","clearance:smallint","start_date:timestamp","end_date:timestamp","zone_id:bigint","rms_department_id:bigint","rms_subdepartment_id:bigint","rms_bracket_id:bigint","rms_item_master_id:bigint","brand_id:bigint","pricing_param_key_id:bigint","rule_app_type_id:smallint","category_type_id:smallint","category_subtype_id:smallint","equation_type_id:smallint"],
+      "note": "Staged pricing changes pending queue approval. Contains sac_days and sac_days_printed."
+    },
+    "pricing_report": {
+      "pk": "pricing_report_id",
+      "cols": ["pricing_report_id:bigint","type:varchar","date_time:timestamp","status:varchar","doc_url:varchar","company_code:varchar"]
+    },
+    "pricing_report_association": {
+      "pk": "report_association_id",
+      "cols": ["report_association_id:bigint","pricing_report_id:bigint","association_type:varchar","association_value:varchar"]
+    },
+    "pricing_source_detail": {
+      "pk": "pricing_source_detail_id",
+      "cols": ["pricing_source_detail_id:bigint","product_price_id:bigint","pricing_param_key_id:bigint","pricing_param_value_id:bigint"]
+    },
+    "pricing_upload": {
+      "pk": "pricing_upload_id",
+      "cols": ["pricing_upload_id:bigint","document_name:varchar","uploaded_by:varchar","type:varchar","date_time:timestamp","status:varchar","document_url:varchar","completed_count:bigint","failed_count:bigint","company_code:varchar","email:varchar","publish_price_flag:smallint","approved_by:varchar"],
+      "note": "Tracks pricing file uploads and their processing status."
+    },
+    "pricing_upload_association": {
+      "pk": "upload_association_id",
+      "cols": ["upload_association_id:bigint","pricing_upload_id:bigint","association_type:varchar","association_value:varchar"]
+    },
+    "product_clearance": {
+      "pk": "product_clearance_id",
+      "cols": ["product_clearance_id:bigint","rms_item_master_id:bigint","rms_item_number:bigint","zone_number:int","clearance_start_time:timestamptz","clearance_end_time:timestamptz","load_time:timestamptz","zone_id:bigint","pricing_param_value_id:bigint"]
+    },
+    "product_price": {
+      "pk": "product_price_id",
+      "cols": ["product_price_id:bigint","rms_item_number:bigint","zone_number:int","pricing_type:varchar","start_time:timestamptz","end_time:timestamptz","weekly_rate:numeric","biweekly_rate:numeric","semi_monthly_rate:numeric","monthly_rate:numeric","weekly_term:smallint","biweekly_term:smallint","semi_monthly_term:smallint","monthly_term:smallint","cash_price:numeric","total_cost:numeric","cash_price_multiplier:numeric","forced_cash_price:numeric","add_on_weekly_rate:numeric","sac_days:int","sac_days_printed:int","epo_pct:numeric","original_term:smallint","turn:numeric","load_time:timestamptz","rms_item_master_id:bigint","zone_id:bigint"],
+      "note": "Published product prices by item and zone. Contains sac_days and sac_days_printed."
+    },
+    "queue_status_type": {
+      "pk": "queue_status_type_id",
+      "cols": ["queue_status_type_id:smallint","ref_code:varchar","default_value:smallint","desc_en:varchar","desc_es:varchar","active:smallint","display_seq:int"]
+    },
+    "queue_type": {
+      "pk": "queue_type_id",
+      "cols": ["queue_type_id:smallint","ref_code:varchar","default_value:smallint"]
+    },
+    "awsdms_validation_failures_v1": {
+      "pk": null,
+      "cols": ["TASK_NAME:varchar","TABLE_OWNER:varchar","TABLE_NAME:varchar","FAILURE_TIME:timestamp","KEY_TYPE:varchar","KEY:varchar","FAILURE_TYPE:varchar","DETAILS:varchar"],
+      "note": "AWS DMS replication validation failures log. Not a domain table — use only for troubleshooting replication issues."
+    }
+  }
+}

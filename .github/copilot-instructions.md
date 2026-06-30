@@ -97,7 +97,31 @@ When asked to investigate an incident or bug:
 | "What error messages can appear here?" | `find_error_messages` |
 | "Is there a PR already fixing this?" | `get_open_prs` |
 | "Reproduce a calculation from DB values" | Write inline JS proof, run via terminal |
+| "Generate a DB query for racadm/configadm/prcadm" | Use `sql-query-builder` agent or follow the DB Query Protocol below |
 | "RCA is done, clean up scratch files" | `cleanup_analysis_files` with `confirm: true` |
+
+---
+
+## 🗄️ DB Query Protocol — ALWAYS Validate Column Names
+
+**Any time a DB query is needed** (for evidence gathering, scope queries, or calculation proofs), column names MUST be verified against the schema metadata before the SQL is written. Past RCAs have had wrong column names — this is the fix.
+
+### Lookup order (never skip)
+1. Read **`sql-query-generator/metadata/schema-index.json`** — compact index of every table/column across all three schemas. Check this first.
+2. Read **`sql-query-generator/metadata/relationships.json`** — FK join paths and table relationships.
+3. Only if the table is absent from the index → read **`sql-query-generator/metadata/<schema>.csv`** (racadm.csv, configadm.csv, or prcadm.csv).
+
+### Schema → Database mapping
+| Schema | Database | Domain |
+|--------|----------|--------|
+| `racadm` | `racdb` | Rental operations: agreements, payments, inventory, stores |
+| `configadm` | `configdb` | App config: business rules, feature flags, org hierarchy |
+| `prcadm` | `prcdb` | Pricing: product prices, SAC days, rate zones, pricing queues |
+
+**Cross-database SQL JOINs are not possible** — run separate queries per database and join in the application layer.
+
+### For dedicated SQL generation
+Use the **Racadm SQL Builder** agent (`.github/agents/sql-query-builder.agent.md`) or run the **Generate DB Query** prompt (`.github/prompts/generate-db-query.prompt.md`) for a fully guided, metadata-validated SQL generation experience.
 
 ---
 
