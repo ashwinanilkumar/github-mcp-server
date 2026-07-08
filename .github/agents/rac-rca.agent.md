@@ -21,6 +21,7 @@ tools:
   - runInTerminal
   - runSubagent
   - read
+  - create_file
 ---
 
 # RAC RCA Agent
@@ -467,7 +468,7 @@ runSubagent("SQL Query Builder", "<plain English description of what data you ne
 9. **Check for regression** (if "worked before") — `get_recent_commits` + `get_commit_diff` on suspect repo
 10. **Reproduce calculation** (financial RCAs only) — Write a `.cjs` proof script with exact DB values; run in terminal
 11. **Verify evidence bar** — Confirm: code read ✓, DB confirmed ✓, timing checked ✓, calculation proved ✓ (if applicable). If any missing → gather it before proceeding
-12. **Deliver RCA** — Produce Word-ready HTML with confidence score; on user confirmation, call `cleanup_analysis_files`
+12. **Deliver RCA** — Use `create_file` to save the Word-ready HTML to `rca-output/RCA-[INCIDENT-ID]-[YYYY-MM-DD].html`; post a short confirmation in chat; on user confirmation of the findings, call `cleanup_analysis_files`
 
 ---
 
@@ -636,13 +637,14 @@ exchangeTotal = fullTRTO − rentPaid = $Z − $W = $V
 ```
 
 ### Output Rules:
-- **Always produce the HTML block** — this is the primary deliverable
-- Keep the RCA under 4 pages when pasted into Word (roughly 2000 words max excluding appendix)
+- **Always save the RCA as an HTML file** — do NOT just output the HTML in chat. Use the `create_file` tool to write it to disk.
+- **File naming convention:** `rca-output/RCA-[INCIDENT-ID]-[YYYY-MM-DD].html` (e.g., `rca-output/RCA-EPO-AGR-12345-2026-07-07.html`). Create the `rca-output/` folder path if it does not exist — `create_file` handles this automatically.
+- After writing the file, post a short confirmation message in chat: *"RCA saved to `rca-output/RCA-[INCIDENT-ID]-[DATE].html`"* and include a one-line TL;DR.
+- Keep the RCA under 4 pages when opened in Word (roughly 2000 words max excluding appendix)
 - Use `<code>` for inline technical values, `<pre>` for multi-line code/queries
 - Use `<table>` with borders for structured evidence — Word renders these well
 - Bold (`<b>`) for key findings and verdicts
-- If a `.docx` file can be generated (environment supports it), prefer that; otherwise always produce the HTML above
-- Include the TL;DR at the very top — stakeholders read this first
+- Include the TL;DR at the very top of the HTML — stakeholders read this first
 
 ---
 
