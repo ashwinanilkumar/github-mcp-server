@@ -32,6 +32,84 @@ const github = axios.create({
   },
 });
 
+// ─── Read-Only Enforcement ─────────────────────────────────────────────────────
+//
+// Intercept every outgoing request and abort if it is a write operation.
+// This is a hard server-side guard — the agent cannot bypass it even if instructed to.
+github.interceptors.request.use((config) => {
+  const method = (config.method || "get").toUpperCase();
+  if (!["GET", "HEAD", "OPTIONS"].includes(method)) {
+    const err = new Error(
+      `[READ-ONLY GUARD] GitHub write operation blocked: ${method} ${config.url}. ` +
+      `This MCP server is strictly read-only. No commits, pushes, PRs, or issues may be created.`
+    );
+    err.code = "EREADONLY";
+    return Promise.reject(err);
+  }
+  return config;
+});
+
+// ─── SHA-Pinned Repo Cache ─────────────────────────────────────────────────────
+//
+// Repos are cached in-process for the lifetime of the MCP server.
+// On every cache hit we verify the live HEAD SHA via `git ls-remote` —
+// a single tiny git-protocol call with zero blob transfer and zero REST rate
+// limit consumption. If the SHA differs (deployment happened) we evict and
+// re-clone automatically. This gives fresh code on every deployment while
+// eliminating redundant clones when nothing has changed.
+//
+// Structure: "org/repo" → { dir: string, clonedAt: number, commitSha: string }
+const repoCache = new Map();
+const CACHE_MAX_REPOS = 5; // LRU eviction by clonedAt
+
+async function getOrCloneRepo(org, repo) {
+  const cacheKey = `${org}/${repo}`;
+  const token = process.env.GITHUB_TOKEN;
+  const cloneUrl = `https://${token}@github.com/${org}/${repo}.git`;
+
+  const cached = repoCache.get(cacheKey);
+  if (cached) {
+    // SHA check — no blob download, not counted against REST rate limit
+    try {
+      const lsOut = execSync(`git ls-remote "${cloneUrl}" HEAD`, { timeout: 15000, stdio: "pipe" });
+      const liveSha = lsOut.toString().split("\t")[0].trim();
+      if (liveSha === cached.commitSha) {
+        // Code unchanged — return cached dir immediately
+        return { dir: cached.dir, cacheHit: true, commitSha: cached.commitSha };
+      }
+      // SHA mismatch → deployment happened; evict stale clone
+      try { rmSync(cached.dir, { recursive: true, force: true }); } catch { /**/ }
+      repoCache.delete(cacheKey);
+    } catch {
+      // ls-remote failed (network hiccup) — evict and re-clone to be safe
+      try { rmSync(cached.dir, { recursive: true, force: true }); } catch { /**/ }
+      repoCache.delete(cacheKey);
+    }
+  }
+
+  // Evict oldest entry if at capacity (LRU by clonedAt)
+  if (repoCache.size >= CACHE_MAX_REPOS) {
+    let oldestKey = null;
+    let oldestTime = Infinity;
+    for (const [k, v] of repoCache.entries()) {
+      if (v.clonedAt < oldestTime) { oldestTime = v.clonedAt; oldestKey = k; }
+    }
+    if (oldestKey) {
+      try { rmSync(repoCache.get(oldestKey).dir, { recursive: true, force: true }); } catch { /**/ }
+      repoCache.delete(oldestKey);
+    }
+  }
+
+  // Fresh clone — full shallow, no sparse checkout
+  // One clone covers all subdirectory searches; no re-clone needed for different path_filters.
+  const tmpDir = mkdtempSync(join(tmpdir(), "rac-clone-"));
+  execSync(`git clone --depth=1 --quiet "${cloneUrl}" "${tmpDir}"`, { timeout: 90000, stdio: "pipe" });
+  const commitSha = execSync(`git -C "${tmpDir}" rev-parse HEAD`, { timeout: 10000, stdio: "pipe" }).toString().trim();
+
+  repoCache.set(cacheKey, { dir: tmpDir, clonedAt: Date.now(), commitSha });
+  return { dir: tmpDir, cacheHit: false, commitSha };
+}
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
@@ -513,28 +591,13 @@ server.tool(
     context_lines: z.number().optional().describe("Lines of context around each match (default 5)."),
   },
   async ({ repo, pattern, path_filter, extensions = [".tsx", ".ts", ".js", ".jsx"], org = DEFAULT_ORG, max_results = 10, context_lines = 5 }) => {
-    let tmpDir = null;
     const startMs = Date.now();
 
     try {
-      tmpDir = mkdtempSync(join(tmpdir(), "rac-clone-"));
-      const token = process.env.GITHUB_TOKEN;
-      // Embed token in URL for auth (token never written to disk)
-      const cloneUrl = `https://${token}@github.com/${org}/${repo}.git`;
-
-      // Shallow clone — depth=1 means no history, just latest snapshot
-      const cloneCmd = path_filter
-        ? `git clone --depth=1 --filter=blob:none --sparse --quiet "${cloneUrl}" "${tmpDir}"`
-        : `git clone --depth=1 --quiet "${cloneUrl}" "${tmpDir}"`;
-
-      execSync(cloneCmd, { timeout: 60000, stdio: "pipe" });
-
-      // If sparse, only checkout the requested subdirectory (downloads only those blobs)
-      if (path_filter) {
-        execSync(`git -C "${tmpDir}" sparse-checkout set "${path_filter}"`, { timeout: 30000, stdio: "pipe" });
-      }
-
-      const searchRoot = path_filter ? join(tmpDir, path_filter) : tmpDir;
+      // Use SHA-pinned cache — zero clone cost on cache hit, auto-refresh on deployment
+      const { dir: repoDir, cacheHit, commitSha } = await getOrCloneRepo(org, repo);
+      // path_filter is now a local filesystem filter only (no sparse checkout)
+      const searchRoot = path_filter ? join(repoDir, path_filter) : repoDir;
       const results = walkAndSearch(searchRoot, pattern, extensions, max_results, context_lines);
       const elapsed = Date.now() - startMs;
 
@@ -545,6 +608,8 @@ server.tool(
             repo,
             pattern,
             path_filter: path_filter ?? "entire repo",
+            cache_hit: cacheHit,
+            commit_sha: commitSha,
             elapsed_ms: elapsed,
             files_matched: results.length,
             results,
@@ -553,10 +618,6 @@ server.tool(
       };
     } catch (err) {
       return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
-    } finally {
-      if (tmpDir) {
-        try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
-      }
     }
   }
 );
@@ -655,13 +716,8 @@ server.tool(
     org: z.string().optional(),
   },
   async ({ repo, org = DEFAULT_ORG }) => {
-    let tmpDir = null;
     try {
-      tmpDir = mkdtempSync(join(tmpdir(), "rac-ff-"));
-      const token = process.env.GITHUB_TOKEN;
-      execSync(`git clone --depth=1 --quiet "https://${token}@github.com/${org}/${repo}.git" "${tmpDir}"`, {
-        timeout: 60000, stdio: "pipe",
-      });
+      const { dir: tmpDir } = await getOrCloneRepo(org, repo);
 
       // Walk and collect all unique feature flag key names
       const flagPattern = /featureFlagDetails\?\.\s*(\w+)|featureFlagDetails\[['"](\w+)['"]\]/g;
@@ -703,8 +759,6 @@ server.tool(
       };
     } catch (err) {
       return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
-    } finally {
-      if (tmpDir) try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /**/ }
     }
   }
 );
@@ -721,18 +775,8 @@ server.tool(
     org: z.string().optional(),
   },
   async ({ repo, component, org = DEFAULT_ORG }) => {
-    let tmpDir = null;
     try {
-      tmpDir = mkdtempSync(join(tmpdir(), "rac-err-"));
-      const token = process.env.GITHUB_TOKEN;
-
-      const cloneCmd = component
-        ? `git clone --depth=1 --filter=blob:none --sparse --quiet "https://${token}@github.com/${org}/${repo}.git" "${tmpDir}"`
-        : `git clone --depth=1 --quiet "https://${token}@github.com/${org}/${repo}.git" "${tmpDir}"`;
-      execSync(cloneCmd, { timeout: 60000, stdio: "pipe" });
-      if (component) {
-        execSync(`git -C "${tmpDir}" sparse-checkout set "client/src/components/${component}"`, { timeout: 30000, stdio: "pipe" });
-      }
+      const { dir: tmpDir } = await getOrCloneRepo(org, repo);
 
       // Patterns that indicate user-facing messages
       const msgPatterns = [
@@ -788,8 +832,6 @@ server.tool(
       };
     } catch (err) {
       return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
-    } finally {
-      if (tmpDir) try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /**/ }
     }
   }
 );
@@ -894,20 +936,9 @@ server.tool(
     org: z.string().optional(),
   },
   async ({ repo, component, org = DEFAULT_ORG }) => {
-    let tmpDir = null;
     try {
-      tmpDir = mkdtempSync(join(tmpdir(), "rac-api-"));
-      const token = process.env.GITHUB_TOKEN;
-
-      const sparseTarget = component
-        ? `client/src/components/${component}`
-        : "client/src";
-
-      execSync(
-        `git clone --depth=1 --filter=blob:none --sparse --quiet "https://${token}@github.com/${org}/${repo}.git" "${tmpDir}"`,
-        { timeout: 60000, stdio: "pipe" }
-      );
-      execSync(`git -C "${tmpDir}" sparse-checkout set "${sparseTarget}"`, { timeout: 30000, stdio: "pipe" });
+      const { dir: tmpDir } = await getOrCloneRepo(org, repo);
+      const sparseTarget = component ? `client/src/components/${component}` : "client/src";
 
       // API call patterns: axios calls, custom API functions (GetXxx, PostXxx, UpdateXxx, DeleteXxx)
       const patterns = [
@@ -965,8 +996,6 @@ server.tool(
       };
     } catch (err) {
       return { content: [{ type: "text", text: `Error: ${err.message}` }], isError: true };
-    } finally {
-      if (tmpDir) try { rmSync(tmpDir, { recursive: true, force: true }); } catch { /**/ }
     }
   }
 );
@@ -1009,6 +1038,14 @@ server.tool(
       }
     }
 
+    // Clear all cached repo clones
+    let cacheCleared = 0;
+    for (const [key, entry] of repoCache.entries()) {
+      try { rmSync(entry.dir, { recursive: true, force: true }); } catch { /**/ }
+      repoCache.delete(key);
+      cacheCleared++;
+    }
+
     return {
       content: [{
         type: "text",
@@ -1016,8 +1053,33 @@ server.tool(
           directory: targetDir,
           deleted,
           errors,
-          summary: `${deleted.length} file(s) deleted, ${errors.length} error(s).`,
+          repos_cache_cleared: cacheCleared,
+          summary: `${deleted.length} file(s) deleted, ${cacheCleared} cached repo(s) cleared, ${errors.length} error(s).`,
         }, null, 2),
+      }],
+    };
+  }
+);
+
+// ─── Tool: List cached repos ───────────────────────────────────────────────────
+//
+// Returns which repos are currently in the SHA-pinned cache and how old they are.
+// Useful for confirming a cache hit before calling clone_and_search.
+server.tool(
+  "list_cached_repos",
+  {},
+  async () => {
+    const now = Date.now();
+    const entries = Array.from(repoCache.entries()).map(([key, entry]) => ({
+      repo: key,
+      commit_sha: entry.commitSha,
+      age_minutes: Math.floor((now - entry.clonedAt) / 60000),
+      dir: entry.dir,
+    }));
+    return {
+      content: [{
+        type: "text",
+        text: JSON.stringify({ cached_repos: entries.length, repos: entries }, null, 2),
       }],
     };
   }
@@ -1027,5 +1089,5 @@ server.tool(
 const transport = new StdioServerTransport();
 await server.connect(transport);
 
-console.error("✅ MCP GitHub server running (v3.0.0)...");
+console.error("✅ MCP GitHub server running (v3.0.0) — READ-ONLY mode enforced (GET/HEAD only)...");
 

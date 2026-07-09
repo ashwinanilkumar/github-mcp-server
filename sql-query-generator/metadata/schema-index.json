@@ -144,8 +144,10 @@
     },
     "agreement_payment_history": {
       "pk": "agreement_payment_history_id",
-      "cols": ["agreement_payment_history_id:bigint","agreement_id:bigint","receipt_id:bigint","store_id:bigint","reversed_agr_payment_hist_id:bigint","ent_agr_payment_hist_id:bigint","previous_schedule_id:bigint"],
-      "note": "All payment transactions. Join receipt for amount/date details."
+      "cols": ["agreement_payment_history_id:bigint","agreement_id:bigint","receipt_id:bigint","store_id:bigint","payment_amount:numeric","payment_date:date","initial_payment:smallint","rental_revenue:numeric","net_rental_revenue:numeric","total_tax:numeric","original_due_date:date","next_due_date:date","reversed_agr_payment_hist_id:bigint","remaining_epo_amount:numeric","carried_late_fee:numeric","carried_rent:numeric","number_of_days_free:integer","net_late_fee:numeric","ldw_fee_amount:numeric","number_of_days_late:integer","discount_amount:numeric","retention_extension_days:integer","retention_extension_amount:numeric","free_time_amount:numeric","installment_note_revenue:numeric","discount_days:integer","created_date:timestamptz","created_by:varchar","last_modified_date:timestamptz","ent_agr_payment_hist_id:bigint","previous_schedule_id:bigint"],
+      "large_table": true,
+      "required_filters": ["agreement_id", "payment_date", "created_date"],
+      "note": "⚠️ LARGE TABLE — hundreds of millions of rows. MUST filter by agreement_id OR a narrow payment_date/created_date range. payment_amount=total collected; rental_revenue=rent credited toward ownership; remaining_epo_amount=EPO balance after payment. No column named 'amount_due' exists on this table."
     },
     "agreement_status": {
       "pk": "agreement_status_id",

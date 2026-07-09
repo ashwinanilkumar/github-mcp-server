@@ -120,6 +120,69 @@ FROM schema.table alias
 6. ❌ Never read a CSV when schema-index.json already has the answer
 7. ❌ Never start building SQL without confirming the schema
 
+---
+
+## ⚡ Performance Guardrails — MANDATORY (past queries ran 1+ hour without these)
+
+Apply these rules to **every query without exception**, before returning SQL to the user.
+
+### Rule P1 — LIMIT is always required
+- Every `SELECT` query MUST end with `LIMIT 100` unless the user explicitly requests a larger result set
+- For COUNT/aggregation queries (`SELECT COUNT(*)`, `GROUP BY`): no LIMIT needed — these return summary rows only
+- If user asks for "all" rows: warn them of volume risk; cap at `LIMIT 1000` and suggest they confirm before removing
+
+### Rule P2 — Large tables require a mandatory indexed filter
+These tables contain **hundreds of millions of rows**. A query without a proper filter will take 10+ minutes or time out entirely:
+
+| Table | ⚠️ Required: at least ONE of these filters |
+|-------|-------------------------------------------|
+| `racadm.agreement_payment_history` | `agreement_id = X` **or** narrow `payment_date`/`created_date` range (≤ 90 days) |
+| `racadm.agreement` | `agreement_id = X` **or** `agreement_number = 'X'` **or** `store_id = X` + date range |
+| `racadm.account_management_activity` | `customer_id = X` **or** `agreement_id = X` **or** `activity_date` range (≤ 90 days) |
+| `racadm.receipt` | `receipt_id = X` **or** narrow `receipt_date` range (≤ 30 days) |
+| `racadm.inventory` | `store_id = X` **or** `inventory_id = X` **or** `rms_item_master_id = X` |
+| `prcadm.pricing_queue` | `store_id = X` **or** `queue_status_type_id = X` |
+| `prcadm.product_price` | `store_id = X` **or** `rms_item_master_id = X` |
+
+**If the user's request would require scanning a large table without any of the listed filters**, stop and ask:
+> "This query would scan `<table>` without an index filter and may take 10+ minutes. Can you provide an `agreement_id`, `store_id`, or date range to narrow it down?"
+
+### Rule P3 — Date ranges must be bounded
+- Never use an unbounded date range on large tables (e.g., `WHERE created_date > '2020-01-01'`)
+- Default to last 90 days: `WHERE created_date >= NOW() - INTERVAL '90 days'`
+- For scope/blast-radius queries: use `DATE_TRUNC('day', created_date)` for grouping — never raw timestamps
+
+### Rule P4 — Never SELECT * on large tables
+- On any table marked `large_table: true` in schema-index.json: always list specific columns
+- Exception: small lookup/reference tables (`*_type`, `*_subtype`, `param_key`, etc.) may use `SELECT *`
+
+### Rule P5 — Pre-flight checklist (run mentally before returning SQL)
+Before giving the user any query, confirm:
+- [ ] All table names verified in schema-index.json or CSV? If not, STOP — do not guess
+- [ ] All column names verified in schema-index.json or CSV? If not, STOP — `amount_due` does NOT exist on `agreement_payment_history` (use `payment_amount`)
+- [ ] Does any large table join lack an indexed filter? If so, add one or ask the user
+- [ ] LIMIT clause present for row-returning queries?
+- [ ] Date range bounded (≤ 90 days) for large table scans?
+- [ ] No cross-schema JOINs in a single query?
+
+### Rule P6 — For scope/blast-radius queries, always use COUNT first
+When the RCA agent asks "how many agreements are affected", generate:
+```sql
+-- Step 1: Count only (fast — run this first to assess volume)
+SELECT COUNT(*) AS affected_count
+FROM ...
+WHERE ...;
+
+-- Step 2: Detail rows (only run if count is manageable)
+SELECT ...
+FROM ...
+WHERE ...
+LIMIT 100;
+```
+Present both. Tell the user to run Step 1 first.
+
+---
+
 ## Common Table Patterns to Know
 
 ### racadm

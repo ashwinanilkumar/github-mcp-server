@@ -89,13 +89,14 @@ When asked to investigate an incident or bug:
 
 | Need | Tool to Use |
 |------|-------------|
-| "How does feature X work?" | `fetch_issue_context` with `module` set |
+| "How does feature X work?" | `fetch_issue_context` with `module` set (best when repo is unknown) |
 | "Find where function Y is defined" | `search_code` with function name |
-| "Grep for exact pattern across full repo" | `clone_and_search` |
+| "Grep for exact pattern across full repo" | `clone_and_search` — SHA-pinned cache means the same repo is reused across the session and auto-refreshed if a deployment happened; prefer this over `fetch_issue_context` once the repo is known |
 | "What changed recently that could cause this?" | `get_recent_commits` + `get_commit_diff` |
 | "What feature flags control this screen?" | `find_feature_flags` |
 | "What error messages can appear here?" | `find_error_messages` |
 | "Is there a PR already fixing this?" | `get_open_prs` |
+| "Which repos are cached right now?" | `list_cached_repos` |
 | "Reproduce a calculation from DB values" | Write inline JS proof, run via terminal |
 | "Generate a DB query for racadm/configadm/prcadm" | Use `sql-query-builder` agent or follow the DB Query Protocol below |
 | "RCA is done, clean up scratch files" | `cleanup_analysis_files` with `confirm: true` |
@@ -104,7 +105,9 @@ When asked to investigate an incident or bug:
 
 ## 🗄️ DB Query Protocol — ALWAYS Validate Column Names
 
-**Any time a DB query is needed** (for evidence gathering, scope queries, or calculation proofs), column names MUST be verified against the schema metadata before the SQL is written. Past RCAs have had wrong column names — this is the fix.
+**Any time a DB query is needed** (for evidence gathering, scope queries, or calculation proofs), column names MUST be verified against the schema metadata before the SQL is written. Past RCAs have had wrong column names and missing index filters causing queries to run for 10+ minutes or 1+ hour — this is the fix.
+
+**⛔ NEVER write SQL inline.** Always call the `SQL Query Builder` agent via `runSubagent("SQL Query Builder", "<plain English request>")`.
 
 ### Lookup order (never skip)
 1. Read **`sql-query-generator/metadata/schema-index.json`** — compact index of every table/column across all three schemas. Check this first.
