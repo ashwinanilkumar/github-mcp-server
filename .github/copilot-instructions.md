@@ -81,7 +81,9 @@ When asked to investigate an incident or bug:
 7. **Check timing** — for data-race issues, compare `created_date` timestamps.
 8. **State verdict clearly**: System bug / Working as Designed / Process gap / Data issue.
 9. **Provide a resolution** — manual fix, DB correction, code fix, or process change.
-10. **Clean up** — when RCA is agreed, call `cleanup_analysis_files` with `confirm: true`.
+10. **Confirm before documenting** — Ask the user: *"RCA confirmed — shall I generate the document?"* Do NOT create the HTML file until explicitly confirmed.
+11. **Generate document (on confirmation only)** — create the Word-ready HTML in `rca-output/` once, with all confirmed evidence already included.
+12. **Clean up** — when RCA is agreed, call `cleanup_analysis_files` with `confirm: true`.
 
 ---
 
@@ -142,6 +144,17 @@ Always structure RCA responses as:
 ### Verdict              (System Bug | Working as Designed | Process Gap | Data Issue)
 ### Resolution           (what to do — code fix, DB correction, manual adjustment, process change)
 ```
+
+### ⚠️ Document Creation Policy — Create ONCE, Only After Full Confirmation
+
+- **DO NOT create or update the RCA HTML file during the investigation.** Present all findings as chat text only.
+- Create the HTML document exactly once, only after all of the following are true:
+  - All DB query results received and verified
+  - Log evidence gathered and confirmed (or explicitly waived)
+  - All hypotheses resolved with no open questions
+  - Verdict finalised
+  - User has explicitly confirmed: *"Yes, generate the document"*
+- Save to: `rca-output/RCA-[INCIDENT-ID]-[YYYY-MM-DD].html`
 
 ---
 

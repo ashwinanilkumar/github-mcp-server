@@ -58,6 +58,30 @@ Use `create_file` to write the completed RCA to `rca-output/RCA-[INCIDENT-ID]-[Y
 <h2>5. Root Cause</h2>
 <p><b>[One sentence — confirmed root cause with file:line reference]</b></p>
 
+<h2>5b. Commit / Jira / Release Attribution</h2>
+<p><i>This section answers the Support team's question: "Which change caused this and when was it deployed?"</i></p>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr style="background:#f2f2f2">
+    <th>Field</th><th>Value</th>
+  </tr>
+  <tr><td><b>Introducing Commit</b></td><td><code>[SHA — first 8 chars]</code> — "[commit message]"</td></tr>
+  <tr><td><b>Committed By</b></td><td>[Author name / GitHub handle]</td></tr>
+  <tr><td><b>Commit Date</b></td><td>[YYYY-MM-DD]</td></tr>
+  <tr><td><b>Jira Ticket</b></td><td><code>[e.g. RAC-4512 / FLX-321]</code> — [ticket title if extractable from commit msg] — or "Not found in commit message"</td></tr>
+  <tr><td><b>Pull Request</b></td><td>#[PR number] — or "Could not be determined"</td></tr>
+  <tr><td><b>Release / Deployment</b></td><td>[Release tag / deploy date / sprint name] — or "Not tagged — estimated from commit date [YYYY-MM-DD]"</td></tr>
+  <tr><td><b>Repo</b></td><td>[repo name]</td></tr>
+  <tr><td><b>Files Changed</b></td><td><code>[file path(s) from diff]</code></td></tr>
+  <tr><td><b>Before This Commit</b></td><td>[What the code did before — from diff old lines (−)]</td></tr>
+  <tr><td><b>After This Commit</b></td><td>[What the code does now — from diff new lines (+)]</td></tr>
+  <tr><td><b>Regression?</b></td><td>[Yes — behaviour changed by this commit] / [No — logic gap present since initial implementation (commit [SHA])]</td></tr>
+</table>
+<p><b>Support Communication Template:</b><br/>
+<i>"This issue was introduced in the <b>[release tag / deploy date]</b> deployment of <b>[repo]</b>,
+via Jira <b>[ticket ID]</b> (PR #[NNN]), committed on [date] by [author].
+The fix requires [brief fix description]."</i>
+</p>
+
 <h2>6. Calculation Proof</h2>
 <pre>
 fullTRTO      = rate × term  = $X × Y  = $Z
