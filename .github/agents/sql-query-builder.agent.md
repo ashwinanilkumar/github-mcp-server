@@ -1,7 +1,7 @@
 ---
 description: "Use when: building SQL queries against the Racadm, Configadm, or Prcadm database, searching for tables or columns, explaining query results, generating reports, or any SQL-related task. Supports both technical and non-technical users. Called by the RCA agent whenever DB evidence queries are needed."
 name: "SQL Query Builder"
-tools: [read, search, edit, todo]
+tools: [read/readFile, search/tool_search]
 argument-hint: "Describe the data you need, e.g. 'show all agreements closed last month' or 'find param config for SameAsCashDays rule in US' or 'show product prices for zone 5'"
 ---
 

@@ -303,24 +303,27 @@ No action needed — it's automatic.
 
 ### Slash-Command Prompts
 
-In Copilot Chat, type `/` to open the prompt picker.
+In Copilot Chat, type `/` to open the prompt picker. All prompts run in **Agent mode** automatically — MCP tools are available without switching modes.
 
 | Prompt | File | When to use |
 |--------|------|-------------|
-| `/rca` | `.github/prompts/rca.prompt.md` | Run a full incident RCA — paste incident ID + DB data |
-| `/functionality-check` | `.github/prompts/functionality-check.prompt.md` | "How does feature X work?" end-to-end |
+| `/rca` | `.github/prompts/rca.prompt.md` | Start a full incident RCA — paste incident ID + DB data |
+| `/continue-rca` | `.github/prompts/continue-rca.prompt.md` | Inject new DB/log evidence into an in-progress RCA |
+| `/generate-db-query` | `.github/prompts/generate-db-query.prompt.md` | Generate a validated SQL query for racadm/configadm/prcadm |
+| `/functionality-check` | `.github/prompts/functionality-check.prompt.md` | "How does feature X work?" — traces full UI → API → DB flow |
 | `/sac-epo-check` | `.github/prompts/sac-epo-check.prompt.md` | Verify a SAC/EPO/TRTO calculation from DB values |
 | `/what-changed` | `.github/prompts/what-changed.prompt.md` | Find recent commits that may have caused a regression |
+| `/rca-output-template` | `.github/prompts/rca-output-template.prompt.md` | Generate the final Word-ready HTML RCA document |
 
-### RCA Agent
+### SQL Query Builder Agent
 
-`.github/agents/rac-rca.agent.md` defines a custom **rac-rca** agent mode in Copilot Chat.
+`.github/agents/sql-query-builder.agent.md` defines the **SQL Query Builder** agent mode.
 
-Switch to **agent mode** in Copilot Chat and select **rac-rca** from the agent dropdown. This agent:
-- Has only the relevant MCP tools available (no broad file edits)
-- Strictly follows the 10-step RCA workflow
-- Always fetches actual code before forming a conclusion
-- Calls `cleanup_analysis_files` automatically when the RCA is agreed upon
+This agent is invoked automatically by the RCA workflow whenever a DB query is needed. You can also use it directly:
+- Switch to **SQL Query Builder** in the agent dropdown, or
+- Use `/generate-db-query` from any Agent mode session
+
+It validates every table and column name against the schema metadata index before writing SQL — no invented column names, no missing index filters.
 
 ---
 

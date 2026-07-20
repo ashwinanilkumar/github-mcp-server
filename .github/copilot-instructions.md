@@ -100,78 +100,10 @@ When asked to investigate an incident or bug:
 | "Is there a PR already fixing this?" | `get_open_prs` |
 | "Which repos are cached right now?" | `list_cached_repos` |
 | "Reproduce a calculation from DB values" | Write inline JS proof, run via terminal |
-| "Generate a DB query for racadm/configadm/prcadm" | Use `sql-query-builder` agent or follow the DB Query Protocol below |
+| "Generate a DB query for racadm/configadm/prcadm" | Run `/generate-db-query` prompt or invoke the `SQL Query Builder` agent |
 | "RCA is done, clean up scratch files" | `cleanup_analysis_files` with `confirm: true` |
 
----
-
-## 🗄️ DB Query Protocol — ALWAYS Validate Column Names
-
-**Any time a DB query is needed** (for evidence gathering, scope queries, or calculation proofs), column names MUST be verified against the schema metadata before the SQL is written. Past RCAs have had wrong column names and missing index filters causing queries to run for 10+ minutes or 1+ hour — this is the fix.
-
-**⛔ NEVER write SQL inline.** Always call the `SQL Query Builder` agent via `runSubagent("SQL Query Builder", "<plain English request>")`.
-
-### Lookup order (never skip)
-1. Read **`sql-query-generator/metadata/schema-index.json`** — compact index of every table/column across all three schemas. Check this first.
-2. Read **`sql-query-generator/metadata/relationships.json`** — FK join paths and table relationships.
-3. Only if the table is absent from the index → read **`sql-query-generator/metadata/<schema>.csv`** (racadm.csv, configadm.csv, or prcadm.csv).
-
-### Schema → Database mapping
-| Schema | Database | Domain |
-|--------|----------|--------|
-| `racadm` | `racdb` | Rental operations: agreements, payments, inventory, stores |
-| `configadm` | `configdb` | App config: business rules, feature flags, org hierarchy |
-| `prcadm` | `prcdb` | Pricing: product prices, SAC days, rate zones, pricing queues |
-
-**Cross-database SQL JOINs are not possible** — run separate queries per database and join in the application layer.
-
-### For dedicated SQL generation
-Use the **Racadm SQL Builder** agent (`.github/agents/sql-query-builder.agent.md`) or run the **Generate DB Query** prompt (`.github/prompts/generate-db-query.prompt.md`) for a fully guided, metadata-validated SQL generation experience.
-
----
-
-## RCA Output Format
-
-Always structure RCA responses as:
-
-```
-## Root Cause Analysis — [INCIDENT ID]
-
-### Issue Summary        (1–2 sentences)
-### DB / Code Evidence   (table of confirmed values)
-### Root Cause           (exact finding with code file + line reference)
-### Calculation Proof    (step-by-step math with actual numbers)
-### Verdict              (System Bug | Working as Designed | Process Gap | Data Issue)
-### Resolution           (what to do — code fix, DB correction, manual adjustment, process change)
-```
-
-### ⚠️ Document Creation Policy — Create ONCE, Only After Full Confirmation
-
-- **DO NOT create or update the RCA HTML file during the investigation.** Present all findings as chat text only.
-- Create the HTML document exactly once, only after all of the following are true:
-  - All DB query results received and verified
-  - Log evidence gathered and confirmed (or explicitly waived)
-  - All hypotheses resolved with no open questions
-  - Verdict finalised
-  - User has explicitly confirmed: *"Yes, generate the document"*
-- Save to: `rca-output/RCA-[INCIDENT-ID]-[YYYY-MM-DD].html`
-
----
-
-## Calculation Rules
-
-When reproducing SAC / EPO / TRTO calculations always use these formulas:
-
-```
-fullTRTO          = rate × fullTerm
-exchangeTotal     = fullTRTO − SUM(rental_revenue from parent)
-exchangeTerm      = Math.ceil(exchangeTotal / rate)
-SAC               = exchangeTotal × cashPriceMultiplier
-EPO (SAC period)  = SAC − rentPaidOnNewAgreement
-EPO (post-SAC)    = getEpoAmount() using state-specific strategy
-```
-
-Show each step with actual numbers. Never round intermediate values — only apply `.toFixed(2)` at the final output.
+> For DB queries use `/generate-db-query`. For calculation proofs use `/sac-epo-check`. For the RCA HTML document use `/rca-output-template`.
 
 ---
 

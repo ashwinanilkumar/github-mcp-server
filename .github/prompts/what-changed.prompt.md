@@ -1,5 +1,6 @@
 ---
 description: "Find what code changed recently in a rentacenter repo and whether it could be causing a regression. Returns commits, diffs, and risk assessment."
+mode: agent
 ---
 
 # What Changed

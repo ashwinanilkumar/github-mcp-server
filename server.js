@@ -10,7 +10,7 @@ import { fileURLToPath } from "url";
 import { tmpdir } from "os";
 
 // Resolve .env relative to this file so it works regardless of CWD
-dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), ".env") });
+dotenv.config({ path: join(dirname(fileURLToPath(import.meta.url)), ".env"), quiet: true });
 
 if (!process.env.GITHUB_TOKEN) {
   console.error("❌ Missing GITHUB_TOKEN in .env");
@@ -160,6 +160,7 @@ function extractKeywords(text, maxKeywords = 6) {
 // ─── Tool 1: List repo files ──────────────────────────────────────────────────
 server.tool(
   "get_repo_files",
+  "List files and directories in a GitHub repository at a given path",
   {
     owner: z.string(),
     repo: z.string(),
@@ -186,6 +187,7 @@ server.tool(
 // ─── Tool 2: Get file content ─────────────────────────────────────────────────
 server.tool(
   "get_file_content",
+  "Fetch the raw text content of a specific file from a GitHub repository",
   {
     owner: z.string(),
     repo: z.string(),
@@ -205,6 +207,7 @@ server.tool(
 // ─── Tool 3: Analyze code snippet ─────────────────────────────────────────────
 server.tool(
   "analyze_code",
+  "Analyze a code snippet for issues such as debug logs, large file size, or outdated syntax",
   { code: z.string() },
   async ({ code }) => {
     const issues = [];
@@ -221,6 +224,7 @@ server.tool(
 // ─── Tool 4: Analyze repo summary ─────────────────────────────────────────────
 server.tool(
   "analyze_repo",
+  "Analyze a GitHub repository structure and summarize its files and JavaScript content",
   { owner: z.string(), repo: z.string() },
   async ({ owner, repo }) => {
     try {
@@ -238,6 +242,7 @@ server.tool(
 // ─── Tool 5: List org repos ────────────────────────────────────────────────────
 server.tool(
   "list_org_repos",
+  "List all repositories in a GitHub organization with metadata such as language and last updated date",
   {
     org: z.string(),
     per_page: z.number().optional(),
@@ -287,6 +292,7 @@ server.tool(
 //   security – Akamai / security configs
 server.tool(
   "resolve_repo",
+  "Resolve a module or feature name to its GitHub repository name using rentacenter naming conventions",
   {
     module: z.string().describe("Module or feature name, e.g. 'agreement', 'payment', 'customer'"),
     prefix: z
@@ -345,6 +351,7 @@ server.tool(
 // Use this to locate where a function/component/variable lives before fetching it.
 server.tool(
   "search_code",
+  "Search for code across GitHub repositories using keywords, returning file paths and matching snippets",
   {
     query: z.string().describe("Keywords to search, e.g. 'createAgreement', 'handlePayment', 'CustomerService'"),
     repo: z.string().optional().describe("Repo name, e.g. 'racpad_agreement'. Searches full org when omitted."),
@@ -400,6 +407,7 @@ server.tool(
 //   • Falls back to a single-keyword retry if combined query returns nothing
 server.tool(
   "fetch_issue_context",
+  "Resolve a natural-language issue description to relevant source code by searching and fetching matching files from GitHub",
   {
     issue: z.string().describe(
       "User's question or issue in plain English, e.g. 'Agreement creation fails when customer has no address'"
@@ -581,6 +589,7 @@ function walkAndSearch(dir, pattern, extensions, maxResults, contextLines) {
 
 server.tool(
   "clone_and_search",
+  "Clone a GitHub repository and perform a fast local regex search across all files, returning matches with line numbers and context",
   {
     repo: z.string().describe("Repo name, e.g. 'racpad_agreement'"),
     pattern: z.string().describe("Regex or text to search for, e.g. 'disabled.*Transfer', 'transferAgreement'"),
@@ -628,6 +637,7 @@ server.tool(
 // Returns the last N commits with author, date, message, and files touched.
 server.tool(
   "get_recent_commits",
+  "Retrieve recent commits from a GitHub repository with author, date, message, and optional file path filter",
   {
     repo: z.string().describe("Repo name, e.g. 'racpad_agreement'"),
     branch: z.string().optional().describe("Branch name. Defaults to the repo's default branch."),
@@ -670,6 +680,7 @@ server.tool(
 // Support use-case: "Show me what changed in commit abc1234 in racpad_payment"
 server.tool(
   "get_commit_diff",
+  "Fetch the full diff and changed files for a specific commit SHA in a GitHub repository",
   {
     repo: z.string().describe("Repo name, e.g. 'racpad_payment'"),
     sha: z.string().describe("Commit SHA (full or short, e.g. 'abc1234')"),
@@ -711,6 +722,7 @@ server.tool(
 // Clones the repo and greps for all featureFlagDetails / feature flag references.
 server.tool(
   "find_feature_flags",
+  "Clone a repository and extract all feature flag references from featureFlagDetails usage across the codebase",
   {
     repo: z.string().describe("Repo name, e.g. 'racpad_agreement'"),
     org: z.string().optional(),
@@ -769,6 +781,7 @@ server.tool(
 // Clones and extracts all user-facing strings: error popups, alerts, toasts.
 server.tool(
   "find_error_messages",
+  "Clone a repository and extract all user-facing error messages, alerts, and popup strings from source code",
   {
     repo: z.string().describe("Repo name, e.g. 'racpad_payment'"),
     component: z.string().optional().describe("Narrow to a subfolder, e.g. 'Payment' or 'AgreementTransfer'"),
@@ -842,6 +855,7 @@ server.tool(
 // Useful for knowing if a reported bug already has a fix in progress.
 server.tool(
   "get_open_prs",
+  "List open pull requests for a GitHub repository with title, author, branch, and labels",
   {
     repo: z.string().describe("Repo name, e.g. 'racpad_agreement'"),
     org: z.string().optional(),
@@ -883,6 +897,7 @@ server.tool(
 // Uses GitHub Code Search (rate-limited to 10 req/min) — use sparingly.
 server.tool(
   "multi_repo_search",
+  "Search for a function, component, or symbol across all repositories in a GitHub organization, filtered by repo prefix",
   {
     query: z.string().describe("Exact symbol, function, or text to search, e.g. 'useCustomerClub', 'EnableClubTransfer'"),
     prefix: z.string().optional().describe("Limit to repos starting with this prefix, e.g. 'racpad', 'es'. Defaults to 'racpad'."),
@@ -930,6 +945,7 @@ server.tool(
 // Clones the repo, finds all axios/fetch/API calls in the relevant component folder.
 server.tool(
   "get_api_calls",
+  "Clone a repository and extract all API endpoint calls made by a component or the entire frontend source",
   {
     repo: z.string().describe("Repo name, e.g. 'racpad_agreement'"),
     component: z.string().optional().describe("Component folder name, e.g. 'AgreementTransfer'. Searches entire src if omitted."),
@@ -1007,6 +1023,7 @@ server.tool(
 // Only removes files matching the pattern *.cjs in the server's working directory.
 server.tool(
   "cleanup_analysis_files",
+  "Delete temporary .cjs analysis files and clear the repo cache after an RCA investigation is complete",
   {
     confirm: z.literal(true).describe("Must be true to confirm deletion. Prevents accidental calls."),
     directory: z.string().optional().describe("Absolute path to scan for .cjs files. Defaults to process.cwd()."),
@@ -1067,6 +1084,7 @@ server.tool(
 // Useful for confirming a cache hit before calling clone_and_search.
 server.tool(
   "list_cached_repos",
+  "List all repositories currently in the SHA-pinned local cache with their commit SHA and age in minutes",
   {},
   async () => {
     const now = Date.now();

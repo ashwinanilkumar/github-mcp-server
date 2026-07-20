@@ -131,7 +131,7 @@
   "racadm": {
     "agreement": {
       "pk": "agreement_id",
-      "cols": ["agreement_id:bigint","agreement_number:varchar","store_id:bigint","customer_id:bigint","agreement_type_id:bigint","agreement_status_type_id:bigint","agreement_status_reason_id:bigint","parent_agreement_id:bigint","sac_date:date","sac_price:numeric","payment_schedule_id:bigint","state_province_id:bigint","delivery_address_id:bigint","agreement_source_id:bigint","sales_person_id:bigint","customer_payment_method_id:bigint","ent_agreement_id:bigint","rate_reduction_reason_id:bigint"],
+      "cols": ["agreement_id:bigint","agreement_number:varchar","store_id:bigint","agreement_type_id:bigint","agreement_status_type_id:bigint","agreement_status_reason_id:bigint","parent_agreement_id:bigint","sac_date:date","sac_price:numeric","payment_schedule_id:bigint","state_province_id:bigint","delivery_address_id:bigint","agreement_source_id:bigint","sales_person_id:bigint","customer_payment_method_id:bigint","ent_agreement_id:bigint","rate_reduction_reason_id:bigint"],
       "note": "PK=agreement_id. Business key=agreement_number. Contains sac_date:date and sac_price:numeric."
     },
     "agreement_customer": {

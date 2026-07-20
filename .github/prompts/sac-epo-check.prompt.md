@@ -1,5 +1,6 @@
 ---
 description: "Verify and reproduce SAC, EPO, or TRTO calculations for any rentacenter agreement. Provide DB values and get a step-by-step proof of what the system should have computed vs what it stored."
+mode: agent
 ---
 
 # SAC / EPO / TRTO Calculation Check

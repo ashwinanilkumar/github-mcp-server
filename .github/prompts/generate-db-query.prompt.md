@@ -2,8 +2,8 @@
 description: "Generate a verified SQL query for racadm, configadm, or prcadm schemas. All tables and columns are validated against the metadata index before output — no invented column names."
 name: "Generate DB Query"
 argument-hint: "Describe what data you need and which schema (racadm, configadm, or prcadm), e.g. 'prcadm: product prices for zone 5' or 'racadm: payment history for agreement 123456' or 'configadm: param config for SameAsCashDays at US country level'"
-agent: "agent"
-tools: [read, search]
+mode: agent
+tools: [read/readFile, search/tool_search]
 ---
 
 Use the [Racadm SQL Builder](./../agents/sql-query-builder.agent.md) agent to generate a SQL query for the following request.

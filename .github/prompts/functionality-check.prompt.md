@@ -1,5 +1,6 @@
 ---
 description: "Understand exactly how a feature, screen, or service works in the rentacenter codebase. Traces the full flow from UI → API → DB."
+mode: agent
 ---
 
 # Functionality Check

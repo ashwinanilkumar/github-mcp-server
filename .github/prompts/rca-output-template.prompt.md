@@ -1,10 +1,11 @@
 ---
 description: "HTML output template for RAC RCA reports. Word-ready format — paste directly into Microsoft Word."
+mode: agent
 ---
 
 # RCA Output Template
 
-Use `create_file` to write the completed RCA to `rca-output/RCA-[INCIDENT-ID]-[YYYY-MM-DD].html`.
+Write the completed RCA to `rca-output/RCA-[INCIDENT-ID]-[YYYY-MM-DD].html` using the file editing tools.
 
 **Rules:**
 - Keep under 4 pages in Word (~2000 words, excluding appendix)

@@ -1,5 +1,6 @@
 ---
 description: "Run a full Root Cause Analysis for a rentacenter incident. Searches live GitHub code, cross-references DB data, reproduces calculations, and delivers a structured verdict."
+mode: agent
 ---
 
 # RCA Analysis
@@ -33,6 +34,24 @@ Runs the full RCA workflow from a **Support team perspective**:
 9. Delivers a verdict: **System Bug / Working as Designed / Process Gap / Data Issue**
 10. Provides a concrete resolution with the commit/Jira/release chain for stakeholder communication
 11. Cleans up all scratch files when you confirm the RCA is final
+
+---
+
+## ⚠️ MCP Tool Activation — Do This Before Any GitHub Tool Call
+
+All `mcp_github-analys_*` tools are **deferred** in VS Code Copilot. They are NOT active at session start.
+Calling them without activation produces the misleading error: *"Tool is currently disabled by the user"* — this does NOT mean the server is off.
+
+**Required step before the FIRST MCP call:**
+Run `tool_search` with query `"mcp github code search clone"`. Once it returns tool names, all MCP calls in that turn will work.
+
+**If you still get "currently disabled" after tool_search:**
+Ask the user to open VS Code Settings → MCP → Restart the github-analysis-server. Do NOT attempt workarounds or fall back to REST API calls.
+
+**Forbidden fallbacks — never do these:**
+- Never call GitHub REST API via `node -e`, PowerShell, or any HTTP client
+- Never read the `.env` file to extract the GitHub token
+- Never create temporary `.js`, `.cjs`, or `.ps1` files for GitHub access
 
 ---
 
