@@ -8,12 +8,24 @@ Usage:
 Connection details are read from the .env file at the project root (never hardcode
 credentials in this script or pass them on the command line).
 
-Required .env variables:
-    DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_SSLMODE
-    One database name per schema:
-        RACADM_DB_NAME   (defaults to "racdb")
-        CONFIGADM_DB_NAME (defaults to "configdb")
-        PRCADM_DB_NAME   (defaults to "prcdb")
+racadm, configadm, and prcadm are frequently separate database CLUSTERS (different
+host/port/credentials), not just different database names on the same server. Each
+schema therefore supports its own optional connection override, falling back to the
+generic DB_* values when not set:
+
+    Generic (fallback) values:
+        DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_SSLMODE
+
+    Per-schema overrides (all optional; only set the ones that differ from the
+    generic values above):
+        RACADM_DB_HOST, RACADM_DB_PORT, RACADM_DB_USER, RACADM_DB_PASSWORD, RACADM_DB_SSLMODE
+        RACADM_DB_NAME     (defaults to "racdb")
+
+        CONFIGADM_DB_HOST, CONFIGADM_DB_PORT, CONFIGADM_DB_USER, CONFIGADM_DB_PASSWORD, CONFIGADM_DB_SSLMODE
+        CONFIGADM_DB_NAME  (defaults to "configdb")
+
+        PRCADM_DB_HOST, PRCADM_DB_PORT, PRCADM_DB_USER, PRCADM_DB_PASSWORD, PRCADM_DB_SSLMODE
+        PRCADM_DB_NAME     (defaults to "prcdb")
 
 Safety:
     - Only SELECT / WITH statements are allowed (read-only investigation tool).
@@ -39,29 +51,36 @@ DB_NAME_BY_SCHEMA = {
 }
 
 
+def _schema_env(schema: str, suffix: str):
+    """Look up a per-schema override (e.g. CONFIGADM_DB_HOST), falling back to
+    the generic DB_<suffix> value when the schema-specific one isn't set."""
+    return os.getenv(f"{schema.upper()}_DB_{suffix}") or os.getenv(f"DB_{suffix}")
+
+
 def get_connection(schema: str):
     dbname = DB_NAME_BY_SCHEMA.get(schema)
     if not dbname:
         raise ValueError(f"Unknown schema '{schema}'. Expected one of: {list(DB_NAME_BY_SCHEMA)}")
 
-    required = ["DB_HOST", "DB_USER"]
-    missing = [v for v in required if not os.getenv(v)]
-    if missing:
+    host = _schema_env(schema, "HOST")
+    user = _schema_env(schema, "USER")
+    if not host or not user:
         raise EnvironmentError(
-            f"Missing required .env values: {', '.join(missing)}. "
-            "Fill these in the .env file at the project root (do not paste secrets in chat)."
+            f"Missing connection details for schema '{schema}'. Set either the generic "
+            f"DB_HOST/DB_USER or the schema-specific {schema.upper()}_DB_HOST/{schema.upper()}_DB_USER "
+            "in the .env file at the project root (do not paste secrets in chat)."
         )
 
     connect_kwargs = dict(
-        host=os.getenv("DB_HOST"),
-        port=os.getenv("DB_PORT", "5432"),
+        host=host,
+        port=_schema_env(schema, "PORT") or "5432",
         dbname=dbname,
-        user=os.getenv("DB_USER"),
-        sslmode=os.getenv("DB_SSLMODE", "require"),
+        user=user,
+        sslmode=_schema_env(schema, "SSLMODE") or "require",
         connect_timeout=10,
     )
     # Password is optional (e.g. trust/peer auth or local dev Postgres with no password).
-    db_password = os.getenv("DB_PASSWORD")
+    db_password = _schema_env(schema, "PASSWORD")
     if db_password:
         connect_kwargs["password"] = db_password
 
